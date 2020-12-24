@@ -4,13 +4,14 @@ open System
 
 type And<'a> = And of 'a list
 type Or<'a> = Or of 'a list
+type Dnf<'a> = Or<And<'a>>
 
 type Exp<'a> = 
-    | AndExp of And<Exp<'a>>
-    | OrExp of Or<Exp<'a>>
+    | AndExp of Exp<'a> list
+    | OrExp of Exp<'a> list
     | Term of 'a
 
-let testExp = AndExp (And [ OrExp (Or [Term 1; Term 2]); OrExp (Or [ Term 3; Term 4]) ])
+let testExp = AndExp [ OrExp [Term 1; Term 2]; OrExp [ Term 3; Term 4] ]
 
 let rec distribute a b =
     match (a, b) with
@@ -50,28 +51,27 @@ let distributeAnd (l: And<Or<'a>>) : Or<And<'a>> =
     |> List.map (And)
     |> Or
 
-let rec dnf (exp: Exp<'a>) : Or<And<'a>> =
+let rec dnf (exp: Exp<'a>) : Dnf<'a> =
+    let flattenAndOfAnds = unboxAnd >> List.collect (unboxAnd) >> And
+    let flattenOrOfOrs = unboxOr >> List.collect (unboxOr) >> Or
+
     match exp with
     | AndExp sexp -> 
         sexp
-        |> unboxAnd
         // Convert sub expressions into dnf
-        |> List.map dnf
-        |> And
+        |> (List.map dnf >> And) 
         // Flip AND of ORs by applying the distributive law
         |> distributeAnd
         // Flatten AND of ANDs
         |> unboxOr
-        |> List.map (unboxAnd >> List.collect (unboxAnd) >> And)
+        |> List.map flattenAndOfAnds
         |> Or
     | OrExp sexp ->
         sexp
-        |> unboxOr
         // Convert sub expressions into dnf
-        |> List.map dnf
+        |> (List.map dnf >> Or)
         // Flatten OR of ORs
-        |> List.collect unboxOr
-        |> Or
+        |> flattenOrOfOrs
     | Term t -> Or [ And [ t ] ]
 
 [<EntryPoint>]
