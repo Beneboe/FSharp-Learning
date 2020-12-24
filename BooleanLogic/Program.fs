@@ -40,12 +40,18 @@ let rec dnf (exp: Exp<'a>) : Or<And<'a>> =
     match exp with
     | AndExp sexp -> 
         sexp
+        // Convert sub expressions into dnf
         |> List.map dnf
+        // Flip AND of ORs by applying the distributive law
         |> distributeAll
-        |> List.map (fun a -> a |> List.collect id)
+        // The output is an OR of ANDs of ANDs 
+        // Flatten AND of ANDs
+        |> List.map (List.collect id)
     | OrExp sexp ->
         sexp
-        |> List.map dnf 
+        // Convert sub expressions into dnf
+        |> List.map dnf
+        // Flatten OR of ORs
         |> List.collect id
     | Term t -> [ [ t ] ]
 
