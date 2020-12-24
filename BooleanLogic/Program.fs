@@ -6,11 +6,11 @@ type And<'a> = 'a list
 type Or<'a> = 'a list
 
 type Exp<'a> = 
-    | And of Exp<'a> list
-    | Or of Exp<'a> list
+    | AndExp of And<Exp<'a>>
+    | OrExp of Or<Exp<'a>>
     | Term of 'a
 
-let testExp = And [ Or [Term 1; Term 2]; Or [ Term 3; Term 4] ]
+let testExp = AndExp [ OrExp [Term 1; Term 2]; OrExp [ Term 3; Term 4] ]
 
 let rec distribute a b =
     match (a, b) with
@@ -36,23 +36,18 @@ let rec distributeAll l =
         | [] -> []
         | _ -> x |> List.collect (fun a -> distributeOnce a (distributeAll xs))
 
-let rec dnf (exp: Exp<'a>) : Exp<'a> =
+let rec dnf (exp: Exp<'a>) : Or<And<'a>> =
     match exp with
-    | And sexp -> 
-        let p = sexp
-                |> List.map dnf
-                |> List.map (fun ssexp -> match ssexp with Or s -> s)
-
-        distributeAll p
-        |> List.map (fun a -> a |> List.collect (fun b -> match b with (And c) -> c))
-        |> List.map (And)
-        |> Or
-    | Or sexp ->
+    | AndExp sexp -> 
+        sexp
+        |> List.map dnf
+        |> distributeAll
+        |> List.map (fun a -> a |> List.collect id)
+    | OrExp sexp ->
         sexp
         |> List.map dnf 
-        |> List.collect (fun ssexp -> match ssexp with  Or a -> a)
-        |> Or
-    | Term t -> Or [ And [ Term t ] ]
+        |> List.collect id
+    | Term t -> [ [ t ] ]
 
 [<EntryPoint>]
 let main argv =
