@@ -46,14 +46,14 @@ let unboxOr =
     | Or x -> x
 
 let distributeAnd (l: And<Or<'a>>) : Or<And<'a>> =
-    let l' = unboxAnd l |> List.map (unboxOr)
+    let l' = unboxAnd l |> List.map unboxOr
     distributeAll l'
-    |> List.map (And)
+    |> List.map And
     |> Or
 
 let rec dnf (exp: Exp<'a>) : Dnf<'a> =
-    let flattenAndOfAnds = unboxAnd >> List.collect (unboxAnd) >> And
-    let flattenOrOfOrs = unboxOr >> List.collect (unboxOr) >> Or
+    let flattenAndOfAnds = unboxAnd >> List.collect unboxAnd >> And
+    let flattenOrOfOrs = unboxOr >> List.collect unboxOr >> Or
 
     match exp with
     | AndExp sexp -> 
@@ -63,9 +63,7 @@ let rec dnf (exp: Exp<'a>) : Dnf<'a> =
         // Flip AND of ORs by applying the distributive law
         |> distributeAnd
         // Flatten AND of ANDs
-        |> unboxOr
-        |> List.map flattenAndOfAnds
-        |> Or
+        |> (unboxOr >> List.map flattenAndOfAnds >> Or)
     | OrExp sexp ->
         sexp
         // Convert sub expressions into dnf
